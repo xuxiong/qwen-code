@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import OpenAI, { type ClientOptions } from 'openai';
 
 import type { ContentGeneratorConfig } from '../core/contentGenerator.js';
 import type { Config } from '../config/config.js';
@@ -21,7 +21,7 @@ export class CustomOpenAIProvider extends DefaultOpenAICompatibleProvider {
   override async buildClient(): Promise<OpenAI> {
     const accessToken = await this.oauthClient.getAccessToken(false);
 
-    const clientOptions: OpenAI.ClientOptions = {
+    const clientOptions: ClientOptions = {
       baseURL: this.contentGeneratorConfig.baseUrl,
       timeout: this.contentGeneratorConfig.timeout ?? DEFAULT_TIMEOUT,
       maxRetries: this.contentGeneratorConfig.maxRetries ?? DEFAULT_MAX_RETRIES,
