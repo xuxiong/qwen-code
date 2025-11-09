@@ -343,6 +343,9 @@ export const AppContainer = (props: AppContainerProps) => {
     isAuthenticating,
     handleAuthSelect,
     openAuthDialog,
+    isCustomAuthenticating,
+    customDeviceAuth,
+    cancelCustomAuthentication,
   } = useAuthCommand(settings, config);
 
   // Qwen OAuth authentication state
@@ -1183,7 +1186,7 @@ export const AppContainer = (props: AppContainerProps) => {
     isVisionSwitchDialogOpen ||
     isPermissionsDialogOpen ||
     isAuthDialogOpen ||
-    (isAuthenticating && isQwenAuthenticating) ||
+    (isAuthenticating && (isQwenAuthenticating || isCustomAuthenticating)) ||
     isEditorDialogOpen ||
     showIdeRestartPrompt ||
     !!proQuotaRequest ||
@@ -1211,6 +1214,8 @@ export const AppContainer = (props: AppContainerProps) => {
       deviceAuth,
       authStatus,
       authMessage,
+      isCustomAuthenticating,
+      customDeviceAuth,
       editorError,
       isEditorDialogOpen,
       corgiMode,
@@ -1305,6 +1310,8 @@ export const AppContainer = (props: AppContainerProps) => {
       deviceAuth,
       authStatus,
       authMessage,
+      isCustomAuthenticating,
+      customDeviceAuth,
       editorError,
       isEditorDialogOpen,
       corgiMode,
@@ -1399,6 +1406,7 @@ export const AppContainer = (props: AppContainerProps) => {
       // Qwen OAuth handlers
       handleQwenAuthTimeout,
       handleQwenAuthCancel,
+      handleCustomAuthCancel: cancelCustomAuthentication,
       handleEditorSelect,
       exitEditorDialog,
       closeSettingsDialog,
@@ -1434,6 +1442,7 @@ export const AppContainer = (props: AppContainerProps) => {
       // Qwen OAuth handlers
       handleQwenAuthTimeout,
       handleQwenAuthCancel,
+      cancelCustomAuthentication,
       handleEditorSelect,
       exitEditorDialog,
       closeSettingsDialog,

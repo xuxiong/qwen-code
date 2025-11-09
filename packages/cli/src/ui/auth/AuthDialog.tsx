@@ -57,6 +57,11 @@ export function AuthDialog({
       value: AuthType.QWEN_OAUTH,
     },
     { key: AuthType.USE_OPENAI, label: 'OpenAI', value: AuthType.USE_OPENAI },
+    {
+      key: AuthType.CUSTOM_OAUTH,
+      label: 'Custom OAuth',
+      value: AuthType.CUSTOM_OAUTH,
+    },
   ];
 
   const initialAuthIndex = Math.max(

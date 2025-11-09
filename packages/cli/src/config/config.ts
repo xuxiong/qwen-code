@@ -801,6 +801,7 @@ export async function loadCliConfig(
     output: {
       format: (argv.outputFormat ?? settings.output?.format) as OutputFormat,
     },
+    custom: settings.security?.custom,
   });
 }
 

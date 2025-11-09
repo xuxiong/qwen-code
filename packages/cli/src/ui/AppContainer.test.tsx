@@ -188,9 +188,12 @@ describe('AppContainer State Management', () => {
       onAuthError: vi.fn(),
       isAuthDialogOpen: false,
       isAuthenticating: false,
+      isCustomAuthenticating: false,
+      customDeviceAuth: null,
       handleAuthSelect: vi.fn(),
       openAuthDialog: vi.fn(),
       cancelAuthentication: vi.fn(),
+      cancelCustomAuthentication: vi.fn(),
     });
     mockedUseEditorSettings.mockReturnValue({
       isEditorDialogOpen: false,

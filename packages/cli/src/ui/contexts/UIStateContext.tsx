@@ -17,6 +17,7 @@ import type {
   StreamingState,
 } from '../types.js';
 import type { DeviceAuthorizationInfo } from '../hooks/useQwenAuth.js';
+import type { CustomDeviceAuthorization } from '../auth/useAuth.js';
 import type { CommandContext, SlashCommand } from '../commands/types.js';
 import type { TextBuffer } from '../components/shared/text-buffer.js';
 import type {
@@ -61,6 +62,8 @@ export interface UIState {
     | 'timeout'
     | 'rate_limit';
   authMessage: string | null;
+  isCustomAuthenticating: boolean;
+  customDeviceAuth: CustomDeviceAuthorization | null;
   editorError: string | null;
   isEditorDialogOpen: boolean;
   corgiMode: boolean;

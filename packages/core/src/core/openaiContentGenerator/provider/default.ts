@@ -29,7 +29,7 @@ export class DefaultOpenAICompatibleProvider
     };
   }
 
-  buildClient(): OpenAI {
+  buildClient(): Promise<OpenAI> | OpenAI {
     const {
       apiKey,
       baseUrl,

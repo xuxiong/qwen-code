@@ -15,6 +15,7 @@ import { SettingsDialog } from './SettingsDialog.js';
 import { AuthInProgress } from '../auth/AuthInProgress.js';
 import { QwenOAuthProgress } from './QwenOAuthProgress.js';
 import { AuthDialog } from '../auth/AuthDialog.js';
+import { CustomOAuthProgress } from '../auth/CustomOAuthProgress.js';
 import { EditorSettingsDialog } from './EditorSettingsDialog.js';
 import { WorkspaceMigrationDialog } from './WorkspaceMigrationDialog.js';
 import { ProQuotaDialog } from './ProQuotaDialog.js';
@@ -200,6 +201,15 @@ export const DialogManager = ({
           authMessage={uiState.authMessage}
           onTimeout={uiActions.handleQwenAuthTimeout}
           onCancel={uiActions.handleQwenAuthCancel}
+        />
+      );
+    }
+
+    if (uiState.isCustomAuthenticating) {
+      return (
+        <CustomOAuthProgress
+          deviceAuth={uiState.customDeviceAuth}
+          onCancel={uiActions.handleCustomAuthCancel}
         />
       );
     }

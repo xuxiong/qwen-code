@@ -17,11 +17,12 @@ export type ChatCompletionToolWithCache = OpenAI.Chat.ChatCompletionTool & {
 
 export interface OpenAICompatibleProvider {
   buildHeaders(): Record<string, string | undefined>;
-  buildClient(): OpenAI;
+  buildClient(): Promise<OpenAI> | OpenAI;
   buildRequest(
     request: OpenAI.Chat.ChatCompletionCreateParams,
     userPromptId: string,
   ): OpenAI.Chat.ChatCompletionCreateParams;
+  handleAuthError?(error: unknown): Promise<boolean> | boolean;
 }
 
 export type DashScopeRequestMetadata = {

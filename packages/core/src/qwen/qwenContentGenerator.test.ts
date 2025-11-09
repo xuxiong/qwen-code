@@ -79,6 +79,21 @@ vi.mock('../core/openaiContentGenerator/pipeline.js', () => ({
       };
     }
 
+    async getClientInstance(): Promise<{
+      apiKey: string;
+      baseURL: string;
+      chat: {
+        completions: {
+          create: ReturnType<typeof vi.fn>;
+        };
+      };
+      embeddings: {
+        create: ReturnType<typeof vi.fn>;
+      };
+    }> {
+      return this.client;
+    }
+
     async execute(
       _request: GenerateContentParameters,
       _userPromptId: string,
@@ -225,6 +240,10 @@ vi.mock('../core/openaiContentGenerator/index.js', () => ({
         apiKey: string;
         baseURL: string;
       };
+      getClientInstance: () => Promise<{
+        apiKey: string;
+        baseURL: string;
+      }>;
     };
 
     constructor(_config: Config, _provider: unknown) {
@@ -233,6 +252,7 @@ vi.mock('../core/openaiContentGenerator/index.js', () => ({
           apiKey: 'test-key',
           baseURL: 'https://api.openai.com/v1',
         },
+        getClientInstance: async () => this.pipeline.client,
       };
     }
 

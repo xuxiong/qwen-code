@@ -145,6 +145,21 @@ export interface GitCoAuthorSettings {
   email?: string;
 }
 
+export interface CustomModelDefinition {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+export interface CustomSettings {
+  apiUrl?: string;
+  authServerUrl?: string;
+  clientId?: string;
+  scope?: string;
+  models?: CustomModelDefinition[];
+  staticApiKey?: string;
+}
+
 export interface GeminiCLIExtension {
   name: string;
   version: string;
@@ -288,6 +303,7 @@ export interface ConfigParameters {
   eventEmitter?: EventEmitter;
   useSmartEdit?: boolean;
   output?: OutputSettings;
+  custom?: CustomSettings;
   skipStartupContext?: boolean;
 }
 
@@ -389,6 +405,7 @@ export class Config {
   private readonly eventEmitter?: EventEmitter;
   private readonly useSmartEdit: boolean;
   private readonly outputSettings: OutputSettings;
+  private readonly customSettings: CustomSettings;
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -500,6 +517,15 @@ export class Config {
     this.eventEmitter = params.eventEmitter;
     this.outputSettings = {
       format: params.output?.format ?? OutputFormat.TEXT,
+    };
+    this.customSettings = {
+      apiUrl: params.custom?.apiUrl ?? 'https://your-llm-api.com/v1',
+      authServerUrl:
+        params.custom?.authServerUrl ?? 'https://your-oauth-server.com',
+      clientId: params.custom?.clientId ?? 'your-client-id',
+      scope: params.custom?.scope ?? 'openid profile model.completion',
+      models: params.custom?.models ?? [],
+      staticApiKey: params.custom?.staticApiKey,
     };
 
     if (params.contextFileName) {
@@ -974,6 +1000,10 @@ export class Config {
 
   getAuthType(): AuthType | undefined {
     return this.contentGeneratorConfig.authType;
+  }
+
+  getCustomSettings(): CustomSettings {
+    return this.customSettings;
   }
 
   getCliVersion(): string | undefined {

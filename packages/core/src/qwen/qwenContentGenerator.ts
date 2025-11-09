@@ -46,8 +46,24 @@ export class QwenContentGenerator extends OpenAIContentGenerator {
 
     // Set default base URL, will be updated dynamically
     if (contentGeneratorConfig?.baseUrl && contentGeneratorConfig?.apiKey) {
-      this.pipeline.client.baseURL = contentGeneratorConfig?.baseUrl;
-      this.pipeline.client.apiKey = contentGeneratorConfig?.apiKey;
+      const existingClient = (
+        this.pipeline as unknown as {
+          client?: { baseURL: string; apiKey: string };
+        }
+      ).client;
+      if (existingClient) {
+        existingClient.baseURL = contentGeneratorConfig.baseUrl;
+        existingClient.apiKey = contentGeneratorConfig.apiKey;
+      }
+      void this.pipeline
+        .getClientInstance()
+        .then((client) => {
+          client.baseURL = contentGeneratorConfig.baseUrl!;
+          client.apiKey = contentGeneratorConfig.apiKey!;
+        })
+        .catch(() => {
+          // Ignore initialization errors; they will be handled during requests
+        });
     }
   }
 
@@ -127,8 +143,9 @@ export class QwenContentGenerator extends OpenAIContentGenerator {
       const { token, endpoint } = await this.getValidToken();
 
       // Apply dynamic configuration
-      this.pipeline.client.apiKey = token;
-      this.pipeline.client.baseURL = endpoint;
+      const client = await this.pipeline.getClientInstance();
+      client.apiKey = token;
+      client.baseURL = endpoint;
 
       return await operation();
     };

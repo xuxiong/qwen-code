@@ -4,15 +4,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { LoadedSettings, SettingScope } from '../../config/settings.js';
-import type { AuthType, Config } from '@qwen-code/qwen-code-core';
 import {
+  AuthType,
   clearCachedCredentialFile,
+  createCustomOAuthClient,
   getErrorMessage,
+  type Config,
 } from '@qwen-code/qwen-code-core';
 import { AuthState } from '../types.js';
 import { validateAuthMethod } from '../../config/auth.js';
+
+export interface CustomDeviceAuthorization {
+  verification_uri?: string;
+  verification_uri_complete?: string;
+  user_code?: string;
+  expires_in?: number;
+}
 
 export function validateAuthMethodWithSettings(
   authType: AuthType,
@@ -40,6 +49,10 @@ export const useAuthCommand = (settings: LoadedSettings, config: Config) => {
 
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(unAuthenticated);
+  const [isCustomAuthenticating, setIsCustomAuthenticating] = useState(false);
+  const [customDeviceAuth, setCustomDeviceAuth] =
+    useState<CustomDeviceAuthorization | null>(null);
+  const customAuthAbortControllerRef = useRef<AbortController | null>(null);
 
   const onAuthError = useCallback(
     (error: string | null) => {
@@ -71,6 +84,66 @@ export const useAuthCommand = (settings: LoadedSettings, config: Config) => {
 
       try {
         setIsAuthenticating(true);
+
+        if (authType === AuthType.CUSTOM_OAUTH) {
+          const staticApiKey = config.getCustomSettings().staticApiKey?.trim();
+          if (staticApiKey) {
+            await config.refreshAuth(authType);
+            console.log(
+              `Authenticated via "${authType}" using static API key.`,
+            );
+            setAuthError(null);
+            setAuthState(AuthState.Authenticated);
+            return;
+          }
+
+          const controller = new AbortController();
+          customAuthAbortControllerRef.current?.abort();
+          customAuthAbortControllerRef.current = controller;
+          setIsCustomAuthenticating(true);
+          setCustomDeviceAuth(null);
+
+          try {
+            const client = createCustomOAuthClient(config);
+            const authData = await client.requestDeviceAuthorization();
+            if (controller.signal.aborted) {
+              return;
+            }
+
+            setCustomDeviceAuth(authData as CustomDeviceAuthorization);
+            await client.pollDeviceToken(
+              String((authData as Record<string, unknown>)['device_code']),
+              controller.signal,
+            );
+
+            if (controller.signal.aborted) {
+              return;
+            }
+
+            await config.refreshAuth(authType);
+            console.log(`Authenticated via "${authType}".`);
+            setAuthError(null);
+            setAuthState(AuthState.Authenticated);
+          } catch (e) {
+            if (
+              !(
+                customAuthAbortControllerRef.current?.signal.aborted ??
+                controller.signal.aborted
+              )
+            ) {
+              onAuthError(`Failed to login. Message: ${getErrorMessage(e)}`);
+            }
+          } finally {
+            if (customAuthAbortControllerRef.current === controller) {
+              customAuthAbortControllerRef.current = null;
+            }
+            setIsCustomAuthenticating(false);
+            setCustomDeviceAuth(null);
+            setIsAuthenticating(false);
+          }
+          return;
+        }
+
         await config.refreshAuth(authType);
         console.log(`Authenticated via "${authType}".`);
         setAuthError(null);
@@ -143,8 +216,18 @@ export const useAuthCommand = (settings: LoadedSettings, config: Config) => {
   }, []);
 
   const cancelAuthentication = useCallback(() => {
+    customAuthAbortControllerRef.current?.abort();
     setIsAuthenticating(false);
+    setIsCustomAuthenticating(false);
+    setCustomDeviceAuth(null);
   }, []);
+
+  const cancelCustomAuthentication = useCallback(() => {
+    if (customAuthAbortControllerRef.current) {
+      customAuthAbortControllerRef.current.abort();
+      onAuthError('Custom OAuth authentication cancelled.');
+    }
+  }, [onAuthError]);
 
   return {
     authState,
@@ -153,8 +236,11 @@ export const useAuthCommand = (settings: LoadedSettings, config: Config) => {
     onAuthError,
     isAuthDialogOpen,
     isAuthenticating,
+    isCustomAuthenticating,
+    customDeviceAuth,
     handleAuthSelect,
     openAuthDialog,
     cancelAuthentication,
+    cancelCustomAuthentication,
   };
 };

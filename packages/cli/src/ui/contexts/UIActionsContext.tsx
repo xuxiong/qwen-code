@@ -28,6 +28,7 @@ export interface UIActions {
   // Qwen OAuth handlers
   handleQwenAuthTimeout: () => void;
   handleQwenAuthCancel: () => void;
+  handleCustomAuthCancel: () => void;
   handleEditorSelect: (
     editorType: EditorType | undefined,
     scope: SettingScope,

@@ -49,6 +49,7 @@ export enum AuthType {
   CLOUD_SHELL = 'cloud-shell',
   USE_OPENAI = 'openai',
   QWEN_OAUTH = 'qwen-oauth',
+  CUSTOM_OAUTH = 'custom-oauth',
 }
 
 export type ContentGeneratorConfig = {
@@ -107,6 +108,34 @@ export function createContentGeneratorConfig(
     return {
       ...newContentGeneratorConfig,
       model: newContentGeneratorConfig?.model || 'qwen3-coder-plus',
+    } as ContentGeneratorConfig;
+  }
+
+  if (authType === AuthType.CUSTOM_OAUTH) {
+    const customSettings = config.getCustomSettings();
+    const apiUrl = customSettings.apiUrl?.trim();
+    if (!apiUrl) {
+      throw new Error('Custom OAuth API base URL is required.');
+    }
+
+    const defaultModel =
+      newContentGeneratorConfig?.model || customSettings.models?.[0]?.id;
+
+    if (!defaultModel) {
+      throw new Error('No model configured for custom OAuth provider.');
+    }
+
+    const staticApiKey = customSettings.staticApiKey?.trim();
+
+    return {
+      ...newContentGeneratorConfig,
+      model: defaultModel,
+      apiKey:
+        staticApiKey && staticApiKey.length > 0
+          ? staticApiKey
+          : 'CUSTOM_OAUTH_DYNAMIC_TOKEN',
+      baseUrl: apiUrl,
+      authType,
     } as ContentGeneratorConfig;
   }
 
@@ -200,6 +229,14 @@ export async function createContentGenerator(
         `Failed to initialize Qwen: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+  }
+
+  if (config.authType === AuthType.CUSTOM_OAUTH) {
+    const { CustomContentGenerator } = await import(
+      '../custom/customContentGenerator.js'
+    );
+
+    return new CustomContentGenerator(config, gcConfig);
   }
 
   throw new Error(

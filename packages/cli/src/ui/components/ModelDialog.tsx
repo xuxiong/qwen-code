@@ -33,8 +33,8 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
 
   // Get available models based on auth type
   const availableModels = useMemo(
-    () => getAvailableModelsForAuthType(authType),
-    [authType],
+    () => getAvailableModelsForAuthType(authType, config),
+    [authType, config],
   );
 
   const MODEL_OPTIONS = useMemo(

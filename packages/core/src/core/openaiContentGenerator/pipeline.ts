@@ -25,13 +25,14 @@ export interface PipelineConfig {
 }
 
 export class ContentGenerationPipeline {
-  client: OpenAI;
   private converter: OpenAIContentConverter;
   private contentGeneratorConfig: ContentGeneratorConfig;
+  private clientPromise?: Promise<OpenAI>;
+  client: OpenAI | undefined;
 
   constructor(private config: PipelineConfig) {
     this.contentGeneratorConfig = config.contentGeneratorConfig;
-    this.client = this.config.provider.buildClient();
+    this.clientPromise = Promise.resolve(this.config.provider.buildClient());
     this.converter = new OpenAIContentConverter(
       this.contentGeneratorConfig.model,
     );
@@ -46,7 +47,8 @@ export class ContentGenerationPipeline {
       userPromptId,
       false,
       async (openaiRequest, context) => {
-        const openaiResponse = (await this.client.chat.completions.create(
+        const client = await this.getClient();
+        const openaiResponse = (await client.chat.completions.create(
           openaiRequest,
           {
             signal: request.config?.abortSignal,
@@ -79,12 +81,10 @@ export class ContentGenerationPipeline {
       true,
       async (openaiRequest, context) => {
         // Stage 1: Create OpenAI stream
-        const stream = (await this.client.chat.completions.create(
-          openaiRequest,
-          {
-            signal: request.config?.abortSignal,
-          },
-        )) as AsyncIterable<OpenAI.Chat.ChatCompletionChunk>;
+        const client = await this.getClient();
+        const stream = (await client.chat.completions.create(openaiRequest, {
+          signal: request.config?.abortSignal,
+        })) as AsyncIterable<OpenAI.Chat.ChatCompletionChunk>;
 
         // Stage 2: Process stream with conversion and logging
         return this.processStreamWithLogging(
@@ -345,27 +345,36 @@ export class ContentGenerationPipeline {
   ): Promise<T> {
     const context = this.createRequestContext(userPromptId, isStreaming);
 
-    try {
-      const openaiRequest = await this.buildRequest(
-        request,
-        userPromptId,
-        isStreaming,
-      );
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const openaiRequest = await this.buildRequest(
+          request,
+          userPromptId,
+          isStreaming,
+        );
 
-      const result = await executor(openaiRequest, context);
+        const result = await executor(openaiRequest, context);
 
-      context.duration = Date.now() - context.startTime;
-      return result;
-    } catch (error) {
-      // Use shared error handling logic
-      return await this.handleError(
-        error,
-        context,
-        request,
-        userPromptId,
-        isStreaming,
-      );
+        context.duration = Date.now() - context.startTime;
+        return result;
+      } catch (error) {
+        const handled = await this.tryHandleAuthError(error);
+        if (!handled || attempt === 1) {
+          return await this.handleError(
+            error,
+            context,
+            request,
+            userPromptId,
+            isStreaming,
+          );
+        }
+
+        await this.rebuildClient();
+      }
     }
+
+    // Fallback: if loop exits unexpectedly, surface generic error
+    throw new Error('Failed to execute OpenAI request after retrying auth.');
   }
 
   /**
@@ -425,5 +434,43 @@ export class ContentGenerationPipeline {
       duration: 0,
       isStreaming,
     };
+  }
+
+  private async getClient(): Promise<OpenAI> {
+    if (!this.clientPromise) {
+      this.clientPromise = Promise.resolve(this.config.provider.buildClient());
+    }
+    const client = await this.clientPromise;
+    this.client = client;
+    return client;
+  }
+
+  async getClientInstance(): Promise<OpenAI> {
+    return this.getClient();
+  }
+
+  private async rebuildClient(): Promise<void> {
+    this.clientPromise = Promise.resolve(this.config.provider.buildClient());
+    this.client = await this.clientPromise;
+  }
+
+  private async tryHandleAuthError(error: unknown): Promise<boolean> {
+    const handler = this.config.provider.handleAuthError?.bind(
+      this.config.provider,
+    );
+    if (!handler) {
+      return false;
+    }
+
+    try {
+      const handled = await handler(error);
+      if (!handled) {
+        return false;
+      }
+
+      return true;
+    } catch (_err) {
+      return false;
+    }
   }
 }

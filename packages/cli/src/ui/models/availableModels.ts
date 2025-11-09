@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { Config } from '@qwen-code/qwen-code-core';
 import { AuthType, DEFAULT_QWEN_MODEL } from '@qwen-code/qwen-code-core';
 
 export type AvailableModel = {
@@ -55,6 +56,7 @@ export function getOpenAIAvailableModelFromEnv(): AvailableModel | null {
 
 export function getAvailableModelsForAuthType(
   authType: AuthType,
+  config?: Config | null,
 ): AvailableModel[] {
   switch (authType) {
     case AuthType.QWEN_OAUTH:
@@ -62,6 +64,15 @@ export function getAvailableModelsForAuthType(
     case AuthType.USE_OPENAI: {
       const openAIModel = getOpenAIAvailableModelFromEnv();
       return openAIModel ? [openAIModel] : [];
+    }
+    case AuthType.CUSTOM_OAUTH: {
+      const customSettings = config?.getCustomSettings();
+      const models = customSettings?.models ?? [];
+      return models.map((model) => ({
+        id: model.id,
+        label: model.label ?? model.id,
+        description: model.description,
+      }));
     }
     default:
       // For other auth types, return empty array for now
